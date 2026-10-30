@@ -157,7 +157,7 @@ function show(id){
 }
 
 // ffmpeg starts loading right away so it is ready when needed
-const ffmpeg = new FFmpegWasm.FFmpeg();
+const ffmpeg = new FFmpegWASM.FFmpeg();
 const ffmpegReady = ffmpeg.load({coreURL:'vendor/ffmpeg-core.js', wasmURL:'vendor/ffmpeg-core.wasm'});
 ffmpegReady.catch(() => {});
 
