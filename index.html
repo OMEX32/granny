@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mijn filmpje</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#2b0f3a">
+<style>
+:root{--ink:#2b0f3a;--bg:#ffffff;--soft:#f1ebf6;--btn:#ffc400;--btn-ink:#2b0f3a;--ok:#0b6b3a}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font:22px/1.5 Verdana,Tahoma,system-ui,sans-serif;color:var(--ink);background:var(--bg);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:34rem;margin:0 auto;padding:1.2rem;display:flex;flex-direction:column;min-height:100vh;gap:1.2rem}
+.dots{display:flex;gap:.6rem}
+.dots i{flex:1;height:.8rem;border-radius:.4rem;background:var(--soft)}
+.dots i.on{background:var(--ink)}
+h1{font-size:1.7rem;line-height:1.2;margin:.2rem 0}
+p{margin:0}
+section{display:none;flex-direction:column;gap:1.2rem;flex:1}
+section.show{display:flex}
+button,.btn{font:inherit;font-weight:700;min-height:68px;width:100%;border:3px solid var(--ink);border-radius:1rem;background:var(--btn);color:var(--btn-ink);padding:.8rem 1rem;cursor:pointer;text-align:center}
+button:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+button.second{background:#fff}
+button:disabled{opacity:.35;cursor:default}
+.spacer{flex:1}
+.song{text-align:left;background:#fff}
+.song[aria-pressed=true]{background:var(--ink);color:#fff}
+.songs{display:flex;flex-direction:column;gap:.8rem}
+.note{background:var(--soft);border-radius:1rem;padding:1rem}
+.bar{height:1.6rem;border-radius:.8rem;background:var(--soft);border:3px solid var(--ink);overflow:hidden}
+.bar b{display:block;height:100%;width:3%;background:var(--ink);transition:width .4s}
+video{width:100%;max-height:55vh;border-radius:1rem;background:#000}
+.good{color:var(--ok)}
+.big{font-size:3.4rem;font-weight:700;text-align:center;margin:.3rem 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+input[type=url]{font:inherit;width:100%;min-height:68px;border:3px solid var(--ink);border-radius:1rem;padding:.8rem 1rem;color:var(--ink)}
+#found,#summary{unicode-bidi:plaintext}
+.err{color:#a30000;font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+
+  <section id="s1">
+    <h1 data-t="t1"></h1>
+    <p data-t="h1"></p>
+    <p class="note" id="picked1" hidden></p>
+    <input type="file" id="vid" accept="video/*" hidden>
+    <button id="pick1" data-t="b1"></button>
+    <div class="spacer"></div>
+    <button id="next1" data-t="next" disabled></button>
+  </section>
+
+  <section id="s2">
+    <h1 data-t="t2"></h1>
+    <p data-t="h2"></p>
+    <input type="url" id="link" dir="ltr" inputmode="url" autocomplete="off">
+    <button class="second" id="check" data-t="check" disabled></button>
+    <p class="note" id="found" hidden></p>
+    <p class="err" id="err2" hidden></p>
+    <div class="spacer"></div>
+    <button class="second" id="back2" data-t="back"></button>
+    <button id="next2" data-t="next" disabled></button>
+  </section>
+
+  <section id="s3">
+    <h1 data-t="t3"></h1>
+    <p data-t="startAt"></p>
+    <p class="big" id="startShow">0:00</p>
+    <div class="grid">
+      <button class="second" id="mMinus" data-t="mm"></button>
+      <button class="second" id="mPlus" data-t="mp"></button>
+      <button class="second" id="sMinus" data-t="sm"></button>
+      <button class="second" id="sPlus" data-t="sp"></button>
+    </div>
+    <div class="spacer"></div>
+    <button class="second" id="back3" data-t="back"></button>
+    <button id="next3" data-t="next"></button>
+  </section>
+
+  <section id="s4">
+    <h1 data-t="t4"></h1>
+    <p class="note" id="summary"></p>
+    <div class="spacer"></div>
+    <button class="second" id="back4" data-t="back"></button>
+    <button id="make" data-t="make"></button>
+  </section>
+
+  <section id="work">
+    <h1 data-t="working"></h1>
+    <p id="status"></p>
+    <div class="bar"><b id="prog"></b></div>
+    <p data-t="wait"></p>
+  </section>
+
+  <section id="done">
+    <h1 class="good" data-t="ready"></h1>
+    <video id="player" controls playsinline></video>
+    <button id="save" data-t="save"></button>
+    <button class="second" id="again" data-t="again"></button>
+  </section>
+
+  <section id="fail">
+    <h1 data-t="failT"></h1>
+    <p data-t="failP"></p>
+    <div class="spacer"></div>
+    <button id="retry" data-t="retry"></button>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script src="vendor/ffmpeg.js"></script>
+<script src="vendor/ffmpeg-util.js"></script>
+<script>
+const LANG = 'ar'; // 'ar' (Iraqi Arabic), 'nl' or 'en'
+const T = {
+  nl:{t1:'Kies je filmpje',h1:'Welk filmpje wil je gebruiken?',b1:'Kies je filmpje',chosen:'Gekozen: ',next:'Volgende',back:'Terug',
+    t2:'Plak de link van het liedje',h2:'Kopieer de link van het YouTube-filmpje en plak die hier.',ph:'Plak hier de link',check:'Zoek het liedje',found:'Gevonden: ',
+    linkFail:'Dit liedje vinden lukt niet. Controleer de link of probeer het later nog eens.',
+    t3:'Vanaf welke minuut moet het liedje beginnen?',startAt:'Het liedje begint bij:',mm:'− 1 minuut',mp:'+ 1 minuut',sm:'− 5 seconden',sp:'+ 5 seconden',
+    t4:'Klaar om te maken',make:'Maak mijn filmpje',sumV:'Filmpje: ',sumS:'Liedje: ',sumT:'Begint bij: ',
+    working:'Ik ben bezig…',dl:'Het liedje ophalen…',mix:'Filmpje en liedje samenvoegen…',wait:'Even geduld, sluit de app niet af.',
+    ready:'Je filmpje is klaar!',save:'Bewaar op mijn telefoon',again:'Nog een filmpje maken',failT:'Dat is niet gelukt',failP:'Geen zorgen, we proberen het gewoon opnieuw.',retry:'Opnieuw proberen',title:'Mijn filmpje'},
+  en:{t1:'Choose your video',h1:'Which video do you want to use?',b1:'Choose your video',chosen:'Chosen: ',next:'Next',back:'Back',
+    t2:'Paste the link of the song',h2:'Copy the link of the YouTube video and paste it here.',ph:'Paste the link here',check:'Find the song',found:'Found: ',
+    linkFail:"Couldn't find this song. Check the link or try again later.",
+    t3:'At which minute should the song start?',startAt:'The song starts at:',mm:'− 1 minute',mp:'+ 1 minute',sm:'− 5 seconds',sp:'+ 5 seconds',
+    t4:'Ready to make it',make:'Make my video',sumV:'Video: ',sumS:'Song: ',sumT:'Starts at: ',
+    working:'Working on it…',dl:'Getting the song…',mix:'Putting video and song together…',wait:'Please wait, do not close the app.',
+    ready:'Your video is ready!',save:'Save to my phone',again:'Make another video',failT:"That didn't work",failP:"Don't worry, let's try again.",retry:'Try again',title:'My video'},
+  ar:{title:'فيديوي',t1:'اختاري الفيديو',h1:'شنو الفيديو اللي تريدين تستخدمينه؟',b1:'اختاري الفيديو',chosen:'المختار: ',next:'التالي',back:'رجوع',
+    t2:'الصقي رابط الأغنية',h2:'انسخي رابط فيديو اليوتيوب والصقيه هنا.',ph:'الصقي الرابط هنا',check:'دوّري على الأغنية',found:'لكيتها: ',
+    linkFail:'ما كدرت ألكى هالأغنية. تأكدي من الرابط أو جربي بعد شوية.',
+    t3:'من أي دقيقة تريدين الأغنية تبدي؟',startAt:'الأغنية تبدي من:',mm:'− دقيقة',mp:'+ دقيقة',sm:'− 5 ثواني',sp:'+ 5 ثواني',
+    t4:'جاهزين نسوّي الفيديو',make:'سوّي الفيديو',sumV:'الفيديو: ',sumS:'الأغنية: ',sumT:'تبدي من: ',
+    working:'دا أشتغل…',dl:'دا أجيب الأغنية…',mix:'دا أدمج الفيديو مع الأغنية…',wait:'اصبري شوية، لا تسكّرين التطبيق.',
+    ready:'الفيديو جاهز!',save:'احفظيه بالتلفون',again:'سوّي فيديو ثاني',failT:'ما اشتغل',failP:'لا تخافين، نعيدها مرة ثانية.',retry:'حاولي مرة ثانية'}
+}[LANG];
+document.documentElement.lang = LANG;
+document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
+document.title = T.title;
+document.querySelectorAll('[data-t]').forEach(e => e.textContent = T[e.dataset.t]);
+const $ = id => document.getElementById(id);
+$('link').placeholder = T.ph;
+let video = null, vDur = 30, info = null, start = 0, outFile = null, outUrl = null;
+const fmt = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+
+function show(id){
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('show', s.id === id));
+  const n = {s1:1,s2:2,s3:3,s4:4}[id];
+  $('dots').style.visibility = n ? 'visible' : 'hidden';
+  document.querySelectorAll('#dots i').forEach((d,i) => d.classList.toggle('on', n && i < n));
+  window.scrollTo(0,0);
+}
+
+// ffmpeg starts loading right away so it is ready when needed
+const ffmpeg = new FFmpegWasm.FFmpeg();
+const ffmpegReady = ffmpeg.load({coreURL:'vendor/ffmpeg-core.js', wasmURL:'vendor/ffmpeg-core.wasm'});
+ffmpegReady.catch(() => {});
+
+async function api(path, params){
+  const r = await fetch(window.API_URL + path + '?' + new URLSearchParams(params), {headers:{'X-Key': window.API_KEY}});
+  if (!r.ok) throw new Error('api ' + r.status);
+  return r;
+}
+
+// Step 1: video
+$('pick1').onclick = () => $('vid').click();
+$('vid').onchange = e => {
+  video = e.target.files[0] || null;
+  $('next1').disabled = !video;
+  $('picked1').hidden = !video;
+  if (!video) return;
+  $('picked1').textContent = T.chosen + video.name;
+  const v = document.createElement('video'); v.preload = 'metadata'; v.src = URL.createObjectURL(video);
+  v.onloadedmetadata = () => { vDur = v.duration || 30; URL.revokeObjectURL(v.src); };
+};
+$('next1').onclick = () => show('s2');
+
+// Step 2: YouTube link
+const isYT = u => /^(https?:\/\/)?((www|m|music)\.)?(youtube\.com|youtu\.be)\//i.test(u.trim());
+$('link').oninput = () => { info = null; $('next2').disabled = true; $('found').hidden = true; $('err2').hidden = true; $('check').disabled = !isYT($('link').value); };
+$('check').onclick = async () => {
+  $('check').disabled = true; $('err2').hidden = true;
+  try {
+    info = await (await api('/info', {url: $('link').value.trim()})).json();
+    $('found').textContent = T.found + info.title + ' (' + fmt(info.duration) + ')';
+    $('found').hidden = false; $('next2').disabled = false;
+  } catch (e) { info = null; $('err2').textContent = T.linkFail; $('err2').hidden = false; }
+  $('check').disabled = false;
+};
+$('back2').onclick = () => show('s1');
+$('next2').onclick = () => { start = 0; showStart(); show('s3'); };
+
+// Step 3: start time
+const maxStart = () => Math.max(0, info.duration - 5);
+function showStart(){ start = Math.max(0, Math.min(maxStart(), start)); $('startShow').textContent = fmt(start); }
+$('mMinus').onclick = () => { start -= 60; showStart(); };
+$('mPlus').onclick  = () => { start += 60; showStart(); };
+$('sMinus').onclick = () => { start -= 5;  showStart(); };
+$('sPlus').onclick  = () => { start += 5;  showStart(); };
+$('back3').onclick = () => show('s2');
+$('next3').onclick = () => {
+  $('summary').textContent = T.sumV + video.name + '\n' + T.sumS + info.title + '\n' + T.sumT + fmt(start);
+  $('summary').style.whiteSpace = 'pre-line';
+  show('s4');
+};
+$('back4').onclick = () => show('s3');
+
+// Step 4: fetch the song clip, then merge. Original video sound is dropped (only the song is kept).
+$('make').onclick = async () => {
+  show('work'); $('status').textContent = T.dl; $('prog').style.width = '5%';
+  const onProg = ({progress}) => { $('prog').style.width = Math.max(30, Math.min(97, 30 + progress*67)) + '%'; };
+  try {
+    const audio = new Uint8Array(await (await api('/clip', {url: $('link').value.trim(), start, dur: Math.ceil(vDur) + 2})).arrayBuffer());
+    $('status').textContent = T.mix; $('prog').style.width = '30%';
+    await ffmpegReady;
+    ffmpeg.on('progress', onProg);
+    await ffmpeg.writeFile('in', await FFmpegUtil.fetchFile(video));
+    await ffmpeg.writeFile('song', audio);
+    const code = await ffmpeg.exec(['-i','in','-stream_loop','-1','-i','song','-map','0:v:0','-map','1:a:0',
+      '-c:v','copy','-c:a','aac','-b:a','192k','-shortest','-movflags','+faststart','out.mp4']);
+    if (code !== 0) throw new Error('ffmpeg ' + code);
+    const data = await ffmpeg.readFile('out.mp4');
+    ffmpeg.off('progress', onProg);
+    for (const f of ['in','song','out.mp4']) { try { await ffmpeg.deleteFile(f); } catch(e){} }
+    if (outUrl) URL.revokeObjectURL(outUrl);
+    outFile = new File([data.buffer], 'mijn-filmpje.mp4', {type:'video/mp4'});
+    outUrl = URL.createObjectURL(outFile);
+    $('player').src = outUrl; $('prog').style.width = '100%';
+    show('done');
+  } catch (err) { console.error(err); show('fail'); }
+};
+
+// Save: share sheet on phones (has "Save Video"), download link elsewhere
+$('save').onclick = async () => {
+  try { if (navigator.canShare && navigator.canShare({files:[outFile]})) { await navigator.share({files:[outFile]}); return; } }
+  catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = outUrl; a.download = outFile.name; a.click();
+};
+
+function reset(){
+  video = null; info = null; start = 0; $('vid').value = ''; $('link').value = '';
+  ['next1','next2','check'].forEach(i => $(i).disabled = true);
+  $('picked1').hidden = true; $('found').hidden = true; $('err2').hidden = true; show('s1');
+}
+$('again').onclick = reset;
+$('retry').onclick = reset;
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+show('s1');
+</script>
+</body>
+</html>
